@@ -1,81 +1,108 @@
+# Write rules that make policy decisions. A rule is a conditional assignment.
+# Organise rules into policies. A policy is a set of rules with a hierarchical name
+# [Playground](https://play.openpolicyagent.org/)
+
 package rbac.authz
 
 # user-role assignments
-group_roles := {
+user_roles := {
+	"default-admin": ["default-admin", "admin"],
 	"admin": ["admin"],
-	"quality_head_design": ["quality_head_design"],
-	"quality_head_system": ["quality_head_system"],
-	"quality_head_manufacture": ["quality_head_manufacture"],
-	"kpi_editor_design": ["kpi_editor_design"],
-	"kpi_editor_system": ["kpi_editor_system"],
-	"kpi_editor_manufacture": ["kpi_editor_manufacture"],
+	"operator": ["operator"],
 	"viewer": ["viewer"],
-	"viewer_limit_ds": ["viewer_limit_ds"],
-	"viewer_limit_m": ["viewer_limit_m"],
-	"design_group_kpi_editor": ["kpi_editor_design", "viewer_limit_ds"],
-	"system_group_kpi_editor": ["kpi_editor_system", "viewer_limit_ds"],
-	"manufacture_group_kpi_editor": ["kpi_editor_manufacture", "viewer"],
-	"project_leader": ["viewer_limit_ds", "viewer_limit_m"],
 }
 
 # role-permissions assignments
 role_permissions := {
 	"admin": [
-		{"action": "view_all", "object": "design"},
-		{"action": "edit", "object": "design"},
-		{"action": "view_all", "object": "system"},
-		{"action": "edit", "object": "system"},
-		{"action": "view_all", "object": "manufacture"},
-		{"action": "edit", "object": "manufacture"},
+		# stellarone system configurations
+		{"action": "view", "object": "system-configurations"},
+		{"action": "edit", "object": "system-configurations"},
+		# manage all groups
+		{"action": "create", "object": "agent-groups"},
+		{"action": "view", "object": "agent-groups"},
+		{"action": "edit", "object": "agent-groups"},
+		{"action": "delete", "object": "agent-groups"},
+		# manage all accounts
+		{"action": "create", "object": "system-accounts"},
+		{"action": "view", "object": "system-accounts"},
+		{"action": "edit", "object": "system-accounts"},
+		{"action": "delete", "object": "system-accounts"},
+		# manage policy configurations
+		{"action": "create", "object": "agent-policies"},
+		{"action": "view", "object": "agent-policies"},
+		{"action": "edit", "object": "agent-policies"},
+		{"action": "delete", "object": "agent-policies"},
 	],
-	"quality_head_design": [
-		{"action": "view_all", "object": "design"},
-		{"action": "edit", "object": "design"},
-		{"action": "view_all", "object": "system"},
-		{"action": "view_all", "object": "manufacture"},
-	],
-	"quality_head_system": [
-		{"action": "view_all", "object": "design"},
-		{"action": "view_all", "object": "system"},
-		{"action": "edit", "object": "system"},
-		{"action": "view_all", "object": "manufacture"},
-	],
-	"quality_head_manufacture": [
-		{"action": "view_all", "object": "design"},
-		{"action": "view_all", "object": "system"},
-		{"action": "view_all", "object": "manufacture"},
-		{"action": "edit", "object": "manufacture"},
-	],
-	"kpi_editor_design": [
-		{"action": "view_all", "object": "design"},
-		{"action": "edit", "object": "design"},
-	],
-	"kpi_editor_system": [
-		{"action": "view_all", "object": "system"},
-		{"action": "edit", "object": "system"},
-	],
-	"kpi_editor_manufacture": [
-		{"action": "view_all", "object": "manufacture"},
-		{"action": "edit", "object": "manufacture"},
+	"operator": [
+		# manage assigned groups
+		{"action": "create", "object": "agent-groups"},
+		{"action": "view", "object": "agent-groups"},
+		{"action": "edit", "object": "agent-groups"},
+		{"action": "delete", "object": "agent-groups"},
+		# manage policy configurations
+		{"action": "create", "object": "agent-policies"},
+		{"action": "view", "object": "agent-policies"},
+		{"action": "edit", "object": "agent-policies"},
+		{"action": "delete", "object": "agent-policies"},
 	],
 	"viewer": [
-		{"action": "view_all", "object": "design"},
-		{"action": "view_all", "object": "system"},
-		{"action": "view_all", "object": "manufacture"},
+		# manage assigned groups
+		{"action": "view", "object": "agent-groups"},
+		# manage policy configurations
+		{"action": "view", "object": "agent-policies"},
 	],
-	"viewer_limit_ds": [
-		{"action": "view_all", "object": "design"},
-		{"action": "view_all", "object": "system"},
-	],
-	"viewer_limit_m": [{"action": "view_l3_project", "object": "manufacture"}],
+}
+
+# role-group permissions assignments
+role_group_permissions := {
+  "default-admin": [
+    	{"object": "all"},
+    ],
+	"admin": [
+    	{"object": ""},
+    ],
+	"operator": [
+    	{"object": ""},
+    ],
+	"viewer": [
+    	{"object": ""},
+    ],
 }
 
 # logic that implements RBAC.
+default eval_result = {
+		"allow": false,
+		"denyReason": ""
+	}
+
 default allow = false
 
+eval_result = result {
+	result := {
+		"allow": allow,
+		"denyReason": deny_reason
+	}
+}
+
 allow {
+	is_action_permit_to_object
+	is_group_permit_to_access
+}
+
+deny_reason = reason {
+    not is_action_permit_to_object
+    reason := "INVALID_ACTION_TO_OBJECT"
+}
+
+deny_reason = reason {
+    not is_group_permit_to_access
+    reason := "INVALID_ACCESS_TO_GROUP"
+}
+
+is_action_permit_to_object {
 	# lookup the list of roles for the user
-	roles := group_roles[input.user[_]]
+	roles := user_roles[input.role[_]]
 
 	# for each role in that list
 	r := roles[_]
@@ -88,4 +115,27 @@ allow {
 
 	# check if the permission granted to r matches the user's request
 	p == {"action": input.action, "object": input.object}
+}
+
+is_group_permit_to_access {
+	input.object != "agent-groups"
+} else { # check group access
+	# lookup the list of roles for the user
+	roles := user_roles[input.role[_]]
+
+	# for each role in that list
+	r := roles[_]
+
+	# lookup the permissions list for role r
+	permissions := role_group_permissions[r]
+
+	# for each permission
+	p := permissions[_]
+
+	# check if the permission granted to r matches the user's request
+	p == {"object": "all"}
+} else { # check group access
+	# for each granted groups
+	g = input.grantedGroups[_]
+	g == input.group
 }

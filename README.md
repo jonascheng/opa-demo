@@ -14,71 +14,104 @@ How to use Role-based access control (RBAC) with the Open Policy Agent. See the 
 package rbac.authz
 
 # user-role assignments
-group_roles := {
-	"design_group_kpi_editor": ["kpi_editor_design", "viewer_limit_ds"],
-	"system_group_kpi_editor": ["kpi_editor_system", "viewer_limit_ds"],
-	"manufacture_group_kpi_editor": ["kpi_editor_manufacture", "viewer"],
-	"project_leader": ["viewer_limit_ds", "viewer_limit_m"],
+user_roles := {
+	"default-admin": ["default-admin", "admin"],
+	"admin": ["admin"],
+	"operator": ["operator"],
+	"viewer": ["viewer"],
 }
 
 # role-permissions assignments
 role_permissions := {
 	"admin": [
-		{"action": "view_all", "object": "design"},
-		{"action": "edit", "object": "design"},
-		{"action": "view_all", "object": "system"},
-		{"action": "edit", "object": "system"},
-		{"action": "view_all", "object": "manufacture"},
-		{"action": "edit", "object": "manufacture"},
+		# stellarone system configurations
+		{"action": "view", "object": "system-configurations"},
+		{"action": "edit", "object": "system-configurations"},
+		# manage all groups
+		{"action": "create", "object": "agent-groups"},
+		{"action": "view", "object": "agent-groups"},
+		{"action": "edit", "object": "agent-groups"},
+		{"action": "delete", "object": "agent-groups"},
+		# manage all accounts
+		{"action": "create", "object": "system-accounts"},
+		{"action": "view", "object": "system-accounts"},
+		{"action": "edit", "object": "system-accounts"},
+		{"action": "delete", "object": "system-accounts"},
+		# manage policy configurations
+		{"action": "create", "object": "agent-policies"},
+		{"action": "view", "object": "agent-policies"},
+		{"action": "edit", "object": "agent-policies"},
+		{"action": "delete", "object": "agent-policies"},
 	],
-	"quality_head_design": [
-		{"action": "view_all", "object": "design"},
-		{"action": "edit", "object": "design"},
-		{"action": "view_all", "object": "system"},
-		{"action": "view_all", "object": "manufacture"},
-	],
-	"quality_head_system": [
-		{"action": "view_all", "object": "design"},
-		{"action": "view_all", "object": "system"},
-		{"action": "edit", "object": "system"},
-		{"action": "view_all", "object": "manufacture"},
-	],
-	"quality_head_manufacture": [
-		{"action": "view_all", "object": "design"},
-		{"action": "view_all", "object": "system"},
-		{"action": "view_all", "object": "manufacture"},
-		{"action": "edit", "object": "manufacture"},
-	],
-	"kpi_editor_design": [
-		{"action": "view_all", "object": "design"},
-		{"action": "edit", "object": "design"},
-	],
-	"kpi_editor_system": [
-		{"action": "view_all", "object": "system"},
-		{"action": "edit", "object": "system"},
-	],
-	"kpi_editor_manufacture": [
-		{"action": "view_all", "object": "manufacture"},
-		{"action": "edit", "object": "manufacture"},
+	"operator": [
+		# manage assigned groups
+		{"action": "create", "object": "agent-groups"},
+		{"action": "view", "object": "agent-groups"},
+		{"action": "edit", "object": "agent-groups"},
+		{"action": "delete", "object": "agent-groups"},
+		# manage policy configurations
+		{"action": "create", "object": "agent-policies"},
+		{"action": "view", "object": "agent-policies"},
+		{"action": "edit", "object": "agent-policies"},
+		{"action": "delete", "object": "agent-policies"},
 	],
 	"viewer": [
-		{"action": "view_all", "object": "design"},
-		{"action": "view_all", "object": "system"},
-		{"action": "view_all", "object": "manufacture"},
+		# manage assigned groups
+		{"action": "view", "object": "agent-groups"},
+		# manage policy configurations
+		{"action": "view", "object": "agent-policies"},
 	],
-	"viewer_limit_ds": [
-		{"action": "view_all", "object": "design"},
-		{"action": "view_all", "object": "system"},
-	],
-	"viewer_limit_m": [{"action": "view_l3_project", "object": "manufacture"}],
+}
+
+# role-group permissions assignments
+role_group_permissions := {
+  "default-admin": [
+    	{"object": "all"},
+    ],
+	"admin": [
+    	{"object": ""},
+    ],
+	"operator": [
+    	{"object": ""},
+    ],
+	"viewer": [
+    	{"object": ""},
+    ],
 }
 
 # logic that implements RBAC.
+default eval_result = {
+		"allow": false,
+		"denyReason": ""
+	}
+
 default allow = false
 
+eval_result = result {
+	result := {
+		"allow": allow,
+		"denyReason": deny_reason
+	}
+}
+
 allow {
+	is_action_permit_to_object
+	is_group_permit_to_access
+}
+
+deny_reason = reason {
+    not is_action_permit_to_object
+    reason := "INVALID_ACTION_TO_OBJECT"
+}
+
+deny_reason = reason {
+    not is_group_permit_to_access
+    reason := "INVALID_ACCESS_TO_GROUP"
+}
+
+is_action_permit_to_object {
 	# lookup the list of roles for the user
-	roles := group_roles[input.user[_]]
+	roles := user_roles[input.role[_]]
 
 	# for each role in that list
 	r := roles[_]
@@ -92,6 +125,29 @@ allow {
 	# check if the permission granted to r matches the user's request
 	p == {"action": input.action, "object": input.object}
 }
+
+is_group_permit_to_access {
+	input.object != "agent-groups"
+} else { # check group access
+	# lookup the list of roles for the user
+	roles := user_roles[input.role[_]]
+
+	# for each role in that list
+	r := roles[_]
+
+	# lookup the permissions list for role r
+	permissions := role_group_permissions[r]
+
+	# for each permission
+	p := permissions[_]
+
+	# check if the permission granted to r matches the user's request
+	p == {"object": "all"}
+} else { # check group access
+	# for each granted groups
+	g = input.grantedGroups[_]
+	g == input.group
+}
 ```
 
 ### Write Testing
@@ -102,46 +158,123 @@ Please download [OPA Binary](https://www.openpolicyagent.org/docs/latest/#runnin
 ```rego
 package rbac.authz
 
-test_design_group_kpi_editor {
-	allow with input as {"user": ["design_group_kpi_editor"], "action": "view_all", "object": "design"}
-	allow with input as {"user": ["design_group_kpi_editor"], "action": "edit", "object": "design"}
-	allow with input as {"user": ["design_group_kpi_editor"], "action": "view_all", "object": "system"}
-	not allow with input as {"user": ["design_group_kpi_editor"], "action": "edit", "object": "system"}
-	not allow with input as {"user": ["design_group_kpi_editor"], "action": "view_all", "object": "manufacture"}
-	not allow with input as {"user": ["design_group_kpi_editor"], "action": "edit", "object": "manufacture"}
+test_default_admin {
+	# stellarone system configurations
+	not allow with input as {"role": ["default-admin"], "action": "create", "object": "system-configurations"}
+	allow with input as {"role": ["default-admin"], "action": "view", "object": "system-configurations"}
+	allow with input as {"role": ["default-admin"], "action": "edit", "object": "system-configurations"}
+	not allow with input as {"role": ["default-admin"], "action": "delete", "object": "system-configurations"}
+	# manage all groups
+	allow with input as {"role": ["default-admin"], "action": "create", "object": "agent-groups"}
+	allow with input as {"role": ["default-admin"], "action": "view", "object": "agent-groups"}
+	allow with input as {"role": ["default-admin"], "action": "edit", "object": "agent-groups"}
+	allow with input as {"role": ["default-admin"], "action": "delete", "object": "agent-groups"}
+	allow with input as {"role": ["default-admin"], "action": "view", "object": "agent-groups", "group": "group1", "grantedGroups": []}
+	allow with input as {"role": ["default-admin"], "action": "view", "object": "agent-groups", "group": "group1", "grantedGroups": ["group1", "group2", "group3"]}
+	allow with input as {"role": ["default-admin"], "action": "view", "object": "agent-groups", "group": "group1", "grantedGroups": ["group3"]}
+	# manage all accounts
+	allow with input as {"role": ["default-admin"], "action": "create", "object": "system-accounts"}
+	allow with input as {"role": ["default-admin"], "action": "view", "object": "system-accounts"}
+	allow with input as {"role": ["default-admin"], "action": "edit", "object": "system-accounts"}
+	allow with input as {"role": ["default-admin"], "action": "delete", "object": "system-accounts"}
+	# manage policy configurations
+	allow with input as {"role": ["default-admin"], "action": "create", "object": "agent-policies"}
+	allow with input as {"role": ["default-admin"], "action": "view", "object": "agent-policies"}
+	allow with input as {"role": ["default-admin"], "action": "edit", "object": "agent-policies"}
+	allow with input as {"role": ["default-admin"], "action": "delete", "object": "agent-policies"}
 }
 
-test_system_group_kpi_editor {
-	allow with input as {"user": ["system_group_kpi_editor"], "action": "view_all", "object": "design"}
-	not allow with input as {"user": ["system_group_kpi_editor"], "action": "edit", "object": "design"}
-	allow with input as {"user": ["system_group_kpi_editor"], "action": "view_all", "object": "system"}
-	allow with input as {"user": ["system_group_kpi_editor"], "action": "edit", "object": "system"}
-	not allow with input as {"user": ["system_group_kpi_editor"], "action": "view_all", "object": "manufacture"}
-	not allow with input as {"user": ["system_group_kpi_editor"], "action": "edit", "object": "manufacture"}
+test_admin {
+	# stellarone system configurations
+	not allow with input as {"role": ["admin"], "action": "create", "object": "system-configurations"}
+	allow with input as {"role": ["admin"], "action": "view", "object": "system-configurations"}
+	allow with input as {"role": ["admin"], "action": "edit", "object": "system-configurations"}
+	not allow with input as {"role": ["admin"], "action": "delete", "object": "system-configurations"}
+	# manage all groups
+	not allow with input as {"role": ["admin"], "action": "create", "object": "agent-groups", "group": "group1", "grantedGroups": []}
+	allow with input as {"role": ["admin"], "action": "create", "object": "agent-groups", "group": "group1", "grantedGroups": ["group1", "group2", "group3"]}
+	not allow with input as {"role": ["admin"], "action": "create", "object": "agent-groups", "group": "group1", "grantedGroups": ["group3"]}
+	not allow with input as {"role": ["admin"], "action": "view", "object": "agent-groups", "group": "group1", "grantedGroups": []}
+	allow with input as {"role": ["admin"], "action": "view", "object": "agent-groups", "group": "group1", "grantedGroups": ["group1", "group2", "group3"]}
+	not allow with input as {"role": ["admin"], "action": "view", "object": "agent-groups", "group": "group1", "grantedGroups": ["group3"]}
+	not allow with input as {"role": ["admin"], "action": "edit", "object": "agent-groups", "group": "group1", "grantedGroups": []}
+	allow with input as {"role": ["admin"], "action": "edit", "object": "agent-groups", "group": "group1", "grantedGroups": ["group1", "group2", "group3"]}
+	not allow with input as {"role": ["admin"], "action": "edit", "object": "agent-groups", "group": "group1", "grantedGroups": ["group3"]}
+	not allow with input as {"role": ["admin"], "action": "delete", "object": "agent-groups", "group": "group1", "grantedGroups": []}
+	allow with input as {"role": ["admin"], "action": "delete", "object": "agent-groups", "group": "group1", "grantedGroups": ["group1", "group2", "group3"]}
+	not allow with input as {"role": ["admin"], "action": "delete", "object": "agent-groups", "group": "group1", "grantedGroups": ["group3"]}
+	# manage all accounts
+	allow with input as {"role": ["admin"], "action": "create", "object": "system-accounts"}
+	allow with input as {"role": ["admin"], "action": "view", "object": "system-accounts"}
+	allow with input as {"role": ["admin"], "action": "edit", "object": "system-accounts"}
+	allow with input as {"role": ["admin"], "action": "delete", "object": "system-accounts"}
+	# manage policy configurations
+	allow with input as {"role": ["admin"], "action": "create", "object": "agent-policies"}
+	allow with input as {"role": ["admin"], "action": "view", "object": "agent-policies"}
+	allow with input as {"role": ["admin"], "action": "edit", "object": "agent-policies"}
+	allow with input as {"role": ["admin"], "action": "delete", "object": "agent-policies"}
 }
 
-test_manufacture_group_kpi_editor {
-	allow with input as {"user": ["manufacture_group_kpi_editor"], "action": "view_all", "object": "design"}
-	not allow with input as {"user": ["manufacture_group_kpi_editor"], "action": "edit", "object": "design"}
-	allow with input as {"user": ["manufacture_group_kpi_editor"], "action": "view_all", "object": "system"}
-	not allow with input as {"user": ["manufacture_group_kpi_editor"], "action": "edit", "object": "system"}
-	allow with input as {"user": ["manufacture_group_kpi_editor"], "action": "view_all", "object": "manufacture"}
-	allow with input as {"user": ["manufacture_group_kpi_editor"], "action": "edit", "object": "manufacture"}
+test_operator {
+	# stellarone system configurations
+	not allow with input as {"role": ["operator"], "action": "create", "object": "system-configurations"}
+	not allow with input as {"role": ["operator"], "action": "view", "object": "system-configurations"}
+	not allow with input as {"role": ["operator"], "action": "edit", "object": "system-configurations"}
+	not allow with input as {"role": ["operator"], "action": "delete", "object": "system-configurations"}
+	# manage all groups
+	not allow with input as {"role": ["operator"], "action": "create", "object": "agent-groups", "group": "group1", "grantedGroups": []}
+	allow with input as {"role": ["operator"], "action": "create", "object": "agent-groups", "group": "group1", "grantedGroups": ["group1", "group2", "group3"]}
+	not allow with input as {"role": ["operator"], "action": "create", "object": "agent-groups", "group": "group1", "grantedGroups": ["group3"]}
+	not allow with input as {"role": ["operator"], "action": "view", "object": "agent-groups", "group": "group1", "grantedGroups": []}
+	allow with input as {"role": ["operator"], "action": "view", "object": "agent-groups", "group": "group1", "grantedGroups": ["group1", "group2", "group3"]}
+	not allow with input as {"role": ["operator"], "action": "view", "object": "agent-groups", "group": "group1", "grantedGroups": ["group3"]}
+	not allow with input as {"role": ["operator"], "action": "edit", "object": "agent-groups", "group": "group1", "grantedGroups": []}
+	allow with input as {"role": ["operator"], "action": "edit", "object": "agent-groups", "group": "group1", "grantedGroups": ["group1", "group2", "group3"]}
+	not allow with input as {"role": ["operator"], "action": "edit", "object": "agent-groups", "group": "group1", "grantedGroups": ["group3"]}
+	not allow with input as {"role": ["operator"], "action": "delete", "object": "agent-groups", "group": "group1", "grantedGroups": []}
+	allow with input as {"role": ["operator"], "action": "delete", "object": "agent-groups", "group": "group1", "grantedGroups": ["group1", "group2", "group3"]}
+	not allow with input as {"role": ["operator"], "action": "delete", "object": "agent-groups", "group": "group1", "grantedGroups": ["group3"]}
+	# manage all accounts
+	not allow with input as {"role": ["operator"], "action": "create", "object": "system-accounts"}
+	not allow with input as {"role": ["operator"], "action": "view", "object": "system-accounts"}
+	not allow with input as {"role": ["operator"], "action": "edit", "object": "system-accounts"}
+	not allow with input as {"role": ["operator"], "action": "delete", "object": "system-accounts"}
+	# manage policy configurations
+	allow with input as {"role": ["operator"], "action": "create", "object": "agent-policies"}
+	allow with input as {"role": ["operator"], "action": "view", "object": "agent-policies"}
+	allow with input as {"role": ["operator"], "action": "edit", "object": "agent-policies"}
+	allow with input as {"role": ["operator"], "action": "delete", "object": "agent-policies"}
 }
 
-test_project_leader {
-	allow with input as {"user": ["project_leader"], "action": "view_all", "object": "design"}
-	not allow with input as {"user": ["project_leader"], "action": "edit", "object": "design"}
-	allow with input as {"user": ["project_leader"], "action": "view_all", "object": "system"}
-	not allow with input as {"user": ["project_leader"], "action": "edit", "object": "system"}
-	not allow with input as {"user": ["project_leader"], "action": "view_all", "object": "manufacture"}
-	not allow with input as {"user": ["project_leader"], "action": "edit", "object": "manufacture"}
-	allow with input as {"user": ["project_leader"], "action": "view_l3_project", "object": "manufacture"}
-}
-
-test_design_group_kpi_editor_and_system_group_kpi_editor {
-	allow with input as {"user": ["design_group_kpi_editor", "system_group_kpi_editor"], "action": "edit", "object": "design"}
-	allow with input as {"user": ["design_group_kpi_editor", "system_group_kpi_editor"], "action": "edit", "object": "system"}
+test_viewer {
+	# stellarone system configurations
+	not allow with input as {"role": ["viewer"], "action": "create", "object": "system-configurations"}
+	not allow with input as {"role": ["viewer"], "action": "view", "object": "system-configurations"}
+	not allow with input as {"role": ["viewer"], "action": "edit", "object": "system-configurations"}
+	not allow with input as {"role": ["viewer"], "action": "delete", "object": "system-configurations"}
+	# manage all groups
+	not allow with input as {"role": ["viewer"], "action": "create", "object": "agent-groups", "group": "group1", "grantedGroups": []}
+	not allow with input as {"role": ["viewer"], "action": "create", "object": "agent-groups", "group": "group1", "grantedGroups": ["group1", "group2", "group3"]}
+	not allow with input as {"role": ["viewer"], "action": "create", "object": "agent-groups", "group": "group1", "grantedGroups": ["group3"]}
+	not allow with input as {"role": ["viewer"], "action": "view", "object": "agent-groups", "group": "group1", "grantedGroups": []}
+  allow with input as {"role": ["viewer"], "action": "view", "object": "agent-groups", "group": "group1", "grantedGroups": ["group1", "group2", "group3"]}
+	not allow with input as {"role": ["viewer"], "action": "view", "object": "agent-groups", "group": "group1", "grantedGroups": ["group3"]}
+	not allow with input as {"role": ["viewer"], "action": "edit", "object": "agent-groups", "group": "group1", "grantedGroups": []}
+	not allow with input as {"role": ["viewer"], "action": "edit", "object": "agent-groups", "group": "group1", "grantedGroups": ["group1", "group2", "group3"]}
+	not allow with input as {"role": ["viewer"], "action": "edit", "object": "agent-groups", "group": "group1", "grantedGroups": ["group3"]}
+	not allow with input as {"role": ["viewer"], "action": "delete", "object": "agent-groups", "group": "group1", "grantedGroups": []}
+	not allow with input as {"role": ["viewer"], "action": "delete", "object": "agent-groups", "group": "group1", "grantedGroups": ["group1", "group2", "group3"]}
+	not allow with input as {"role": ["viewer"], "action": "delete", "object": "agent-groups", "group": "group1", "grantedGroups": ["group3"]}
+	# manage all accounts
+	not allow with input as {"role": ["viewer"], "action": "create", "object": "system-accounts"}
+	not allow with input as {"role": ["viewer"], "action": "view", "object": "system-accounts"}
+	not allow with input as {"role": ["viewer"], "action": "edit", "object": "system-accounts"}
+	not allow with input as {"role": ["viewer"], "action": "delete", "object": "system-accounts"}
+	# manage policy configurations
+	not allow with input as {"role": ["viewer"], "action": "create", "object": "agent-policies"}
+	allow with input as {"role": ["viewer"], "action": "view", "object": "agent-policies"}
+	not allow with input as {"role": ["viewer"], "action": "edit", "object": "agent-policies"}
+	not allow with input as {"role": ["viewer"], "action": "delete", "object": "agent-policies"}
 }
 ```
 
@@ -149,11 +282,10 @@ run test command:
 
 ```bash
 $ opa test -v *.rego
-data.rbac.authz.test_design_group_kpi_editor: PASS (8.604833ms)
-data.rbac.authz.test_system_group_kpi_editor: PASS (7.260166ms)
-data.rbac.authz.test_manufacture_group_kpi_editor: PASS (2.217125ms)
-data.rbac.authz.test_project_leader: PASS (1.823833ms)
-data.rbac.authz.test_design_group_kpi_editor_and_system_group_kpi_editor: PASS (1.150791ms)
+data.rbac.authz.test_default_admin: PASS (14.983875ms)
+data.rbac.authz.test_admin: PASS (10.832791ms)
+data.rbac.authz.test_operator: PASS (6.172959ms)
+data.rbac.authz.test_viewer: PASS (3.544875ms)
 --------------------------------------------------------------------------------
-PASS: 5/5
+PASS: 4/4
 ```

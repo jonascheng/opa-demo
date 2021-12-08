@@ -11,26 +11,37 @@ import (
 
 var (
 	policyPath   = "policy/rbac.authz.rego"
-	defaultQuery = "x = data.rbac.authz.allow"
+	defaultQuery = "x = data.rbac.authz.eval_result"
 )
 
+type evalResult struct {
+	Allow      bool   `json:"allow"`
+	DenyReason string `json:"denyReason"`
+}
+
 type input struct {
-	User   string `json:"user"`
-	Action string `json:"action"`
-	Object string `json:"object"`
+	Role          []string `json:"role"`
+	Action        string   `json:"action"`
+	Object        string   `json:"object"`
+	Group         string   `json:"group"`
+	GrantedGroups []string `json:"grantedGroups"`
 }
 
 func main() {
 	s := input{
-		User:   "design_group_kpi_editor",
-		Action: "view_all",
-		Object: "design",
+		Role:          []string{"viewer"},
+		Action:        "view",
+		Object:        "agent-groups",
+		Group:         "group1",
+		GrantedGroups: []string{"group1", "group2", "group3"},
 	}
 
 	input := map[string]interface{}{
-		"user":   []string{s.User},
-		"action": s.Action,
-		"object": s.Object,
+		"role":          s.Role,
+		"action":        s.Action,
+		"object":        s.Object,
+		"group":         s.Group,
+		"grantedGroups": s.GrantedGroups,
 	}
 
 	p, err := policy.ReadPolicy(policyPath)
@@ -47,20 +58,30 @@ func main() {
 		log.Fatalf("initial rego error: %v", err)
 	}
 
-	ok, _ := result(ctx, query, input)
+	ok, _ := eval(ctx, query, input)
 	log.Println(ok)
 }
 
-func result(ctx context.Context, query rego.PreparedEvalQuery, input map[string]interface{}) (bool, error) {
-	results, err := query.Eval(ctx, rego.EvalInput(input))
+func eval(ctx context.Context, query rego.PreparedEvalQuery, input map[string]interface{}) (evalResult, error) {
+	var result evalResult
+	rs, err := query.Eval(ctx, rego.EvalInput(input))
+
 	if err != nil {
 		log.Fatalf("evaluation error: %v", err)
-	} else if len(results) == 0 {
+	} else if len(rs) == 0 {
 		log.Fatal("undefined result", err)
-		// Handle undefined result.
-	} else if result, ok := results[0].Bindings["x"].(bool); !ok {
-		log.Fatalf("unexpected result type: %v", result)
+	} else {
+		var allow, ok bool
+		var denyReason string
+		if allow, ok = rs[0].Bindings["x"].(map[string]interface{})["allow"].(bool); !ok {
+			log.Fatalf("unexpected result type: %v", rs[0].Bindings["x"].(map[string]interface{})["allow"])
+		}
+		if denyReason, ok = rs[0].Bindings["x"].(map[string]interface{})["denyReason"].(string); !ok {
+			log.Fatalf("unexpected result type: %v", rs[0].Bindings["x"].(map[string]interface{})["denyReason"])
+		}
+		result = evalResult{allow, denyReason}
+		log.Printf("%+v %+v\n", allow, denyReason)
 	}
 
-	return results[0].Bindings["x"].(bool), nil
+	return result, nil
 }
