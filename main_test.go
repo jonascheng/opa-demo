@@ -46,75 +46,74 @@ func Test_result(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    bool
-		wantErr bool
+		want    evalResult
+		wantErr evalResult
 	}{
 		{
-			name: "test_design_group_kpi_editor_edit_design",
+			name: "test_default_admin_view_group",
 			args: args{
 				ctx:   ctx,
 				query: query,
 				input: map[string]interface{}{
-					"user":   []string{"design_group_kpi_editor"},
-					"action": "edit",
-					"object": "design",
+					"role":   []string{"default-admin"},
+					"action": "view",
+					"object": "agent-groups",
 				},
 			},
-			want:    true,
-			wantErr: false,
+			want: evalResult{true, nil},
 		},
 		{
-			name: "test_design_group_kpi_editor_edit_system",
+			name: "test_admin_edit_system_configurations",
 			args: args{
 				ctx:   ctx,
 				query: query,
 				input: map[string]interface{}{
-					"user":   []string{"design_group_kpi_editor"},
+					"role":   []string{"admin"},
 					"action": "edit",
-					"object": "system",
+					"object": "system-configurations",
 				},
 			},
-			want:    false,
-			wantErr: false,
+			want: evalResult{true, nil},
 		},
 		{
-			name: "test_design_group_kpi_editor_and_system_group_kpi_editor_for_edit_design",
+			name: "test_admin_view_group",
 			args: args{
 				ctx:   ctx,
 				query: query,
 				input: map[string]interface{}{
-					"user":   []string{"design_group_kpi_editor", "system_group_kpi_editor"},
-					"action": "edit",
-					"object": "design",
+					"role":          []string{"admin"},
+					"action":        "view",
+					"object":        "agent-groups",
+					"group":         "group10",
+					"authzedGroups": []string{"group1", "group2", "group3"},
 				},
 			},
-			want:    true,
-			wantErr: false,
+			want: evalResult{false, []string{"INVALID_ACCESS_TO_GROUP"}},
 		},
 		{
-			name: "test_design_group_kpi_editor_and_system_group_kpi_editor_for_edit_system",
+			name: "test_viewer_edit_system_configurations",
 			args: args{
 				ctx:   ctx,
 				query: query,
 				input: map[string]interface{}{
-					"user":   []string{"design_group_kpi_editor", "system_group_kpi_editor"},
+					"role":   []string{"viewer"},
 					"action": "edit",
-					"object": "system",
+					"object": "system-configurations",
 				},
 			},
-			want:    true,
-			wantErr: false,
+			want: evalResult{false, []string{"INVALID_ACTION_TO_OBJECT"}},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := result(tt.args.ctx, tt.args.query, tt.args.input)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("result() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
+			got, _ := eval(tt.args.ctx, tt.args.query, tt.args.input)
+			if got.Allow != tt.want.Allow {
 				t.Errorf("result() = %v, want %v", got, tt.want)
+			}
+			for idx, reason := range got.DenyReason {
+				if reason != tt.want.DenyReason[idx] {
+					t.Errorf("result() = %v, want %v", got, tt.want)
+				}
 			}
 		})
 	}

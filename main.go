@@ -15,8 +15,8 @@ var (
 )
 
 type evalResult struct {
-	Allow      bool   `json:"allow"`
-	DenyReason string `json:"denyReason"`
+	Allow      bool     `json:"allow"`
+	DenyReason []string `json:"denyReason"`
 }
 
 type input struct {
@@ -32,7 +32,7 @@ func main() {
 		Role:          []string{"viewer"},
 		Action:        "view",
 		Object:        "agent-groups",
-		Group:         "group10",
+		Group:         "group1",
 		AuthzedGroups: []string{"group1", "group2", "group3"},
 	}
 
@@ -74,13 +74,20 @@ func eval(ctx context.Context, query rego.PreparedEvalQuery, input map[string]in
 		log.Fatal("undefined result", err)
 	} else {
 		var allow, ok bool
-		denyReason := ""
+		denyReason := []string{}
 		if allow, ok = rs[0].Bindings["x"].(map[string]interface{})["allow"].(bool); !ok {
 			log.Fatalf("unexpected result type: %v", rs[0].Bindings["x"].(map[string]interface{})["allow"])
 		}
 		if !allow {
-			if denyReason, ok = rs[0].Bindings["x"].(map[string]interface{})["denyReason"].(string); !ok {
-				log.Fatalf("unexpected result type: %v", rs[0].Bindings["x"].(map[string]interface{})["denyReason"])
+			// t := reflect.TypeOf(rs[0].Bindings["x"].(map[string]interface{})["denyReason"].([]interface{})[0])
+			// log.Print(t)
+			reasons := rs[0].Bindings["x"].(map[string]interface{})["denyReason"].([]interface{})
+			for _, r := range reasons {
+				var reason string
+				if reason, ok = r.(string); !ok {
+					log.Fatalf("unexpected result type: %v", r)
+				}
+				denyReason = append(denyReason, reason)
 			}
 		}
 		result = evalResult{allow, denyReason}

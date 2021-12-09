@@ -83,12 +83,12 @@ permit {
 	is_group_permit_to_access
 }
 
-deny_reason = reason {
+deny_reason[reason] {
     not is_action_permit_to_object
     reason := "INVALID_ACTION_TO_OBJECT"
 }
 
-deny_reason = reason {
+deny_reason[reason] {
     not is_group_permit_to_access
     reason := "INVALID_ACCESS_TO_GROUP"
 }
