@@ -11,9 +11,9 @@ test_default_admin {
 	allow with input as {"role": ["default-admin"], "action": "view", "object": "agent-groups"}
 	allow with input as {"role": ["default-admin"], "action": "edit", "object": "agent-groups"}
 	allow with input as {"role": ["default-admin"], "action": "delete", "object": "agent-groups"}
-	allow with input as {"role": ["default-admin"], "action": "view", "object": "agent-groups", "group": "group1", "grantedGroups": []}
-	allow with input as {"role": ["default-admin"], "action": "view", "object": "agent-groups", "group": "group1", "grantedGroups": ["group1", "group2", "group3"]}
-	allow with input as {"role": ["default-admin"], "action": "view", "object": "agent-groups", "group": "group1", "grantedGroups": ["group3"]}
+	allow with input as {"role": ["default-admin"], "action": "view", "object": "agent-groups", "group": "group1", "authzedGroups": []}
+	allow with input as {"role": ["default-admin"], "action": "view", "object": "agent-groups", "group": "group1", "authzedGroups": ["group1", "group2", "group3"]}
+	allow with input as {"role": ["default-admin"], "action": "view", "object": "agent-groups", "group": "group1", "authzedGroups": ["group3"]}
 	# manage all accounts
 	allow with input as {"role": ["default-admin"], "action": "create", "object": "system-accounts"}
 	allow with input as {"role": ["default-admin"], "action": "view", "object": "system-accounts"}
@@ -33,18 +33,18 @@ test_admin {
 	allow with input as {"role": ["admin"], "action": "edit", "object": "system-configurations"}
 	not allow with input as {"role": ["admin"], "action": "delete", "object": "system-configurations"}
 	# manage all groups
-	not allow with input as {"role": ["admin"], "action": "create", "object": "agent-groups", "group": "group1", "grantedGroups": []}
-	allow with input as {"role": ["admin"], "action": "create", "object": "agent-groups", "group": "group1", "grantedGroups": ["group1", "group2", "group3"]}
-	not allow with input as {"role": ["admin"], "action": "create", "object": "agent-groups", "group": "group1", "grantedGroups": ["group3"]}
-	not allow with input as {"role": ["admin"], "action": "view", "object": "agent-groups", "group": "group1", "grantedGroups": []}
-	allow with input as {"role": ["admin"], "action": "view", "object": "agent-groups", "group": "group1", "grantedGroups": ["group1", "group2", "group3"]}
-	not allow with input as {"role": ["admin"], "action": "view", "object": "agent-groups", "group": "group1", "grantedGroups": ["group3"]}
-	not allow with input as {"role": ["admin"], "action": "edit", "object": "agent-groups", "group": "group1", "grantedGroups": []}
-	allow with input as {"role": ["admin"], "action": "edit", "object": "agent-groups", "group": "group1", "grantedGroups": ["group1", "group2", "group3"]}
-	not allow with input as {"role": ["admin"], "action": "edit", "object": "agent-groups", "group": "group1", "grantedGroups": ["group3"]}
-	not allow with input as {"role": ["admin"], "action": "delete", "object": "agent-groups", "group": "group1", "grantedGroups": []}
-	allow with input as {"role": ["admin"], "action": "delete", "object": "agent-groups", "group": "group1", "grantedGroups": ["group1", "group2", "group3"]}
-	not allow with input as {"role": ["admin"], "action": "delete", "object": "agent-groups", "group": "group1", "grantedGroups": ["group3"]}
+	not allow with input as {"role": ["admin"], "action": "create", "object": "agent-groups", "group": "group1", "authzedGroups": []}
+	allow with input as {"role": ["admin"], "action": "create", "object": "agent-groups", "group": "group1", "authzedGroups": ["group1", "group2", "group3"]}
+	not allow with input as {"role": ["admin"], "action": "create", "object": "agent-groups", "group": "group1", "authzedGroups": ["group3"]}
+	not allow with input as {"role": ["admin"], "action": "view", "object": "agent-groups", "group": "group1", "authzedGroups": []}
+	allow with input as {"role": ["admin"], "action": "view", "object": "agent-groups", "group": "group1", "authzedGroups": ["group1", "group2", "group3"]}
+	not allow with input as {"role": ["admin"], "action": "view", "object": "agent-groups", "group": "group1", "authzedGroups": ["group3"]}
+	not allow with input as {"role": ["admin"], "action": "edit", "object": "agent-groups", "group": "group1", "authzedGroups": []}
+	allow with input as {"role": ["admin"], "action": "edit", "object": "agent-groups", "group": "group1", "authzedGroups": ["group1", "group2", "group3"]}
+	not allow with input as {"role": ["admin"], "action": "edit", "object": "agent-groups", "group": "group1", "authzedGroups": ["group3"]}
+	not allow with input as {"role": ["admin"], "action": "delete", "object": "agent-groups", "group": "group1", "authzedGroups": []}
+	allow with input as {"role": ["admin"], "action": "delete", "object": "agent-groups", "group": "group1", "authzedGroups": ["group1", "group2", "group3"]}
+	not allow with input as {"role": ["admin"], "action": "delete", "object": "agent-groups", "group": "group1", "authzedGroups": ["group3"]}
 	# manage all accounts
 	allow with input as {"role": ["admin"], "action": "create", "object": "system-accounts"}
 	allow with input as {"role": ["admin"], "action": "view", "object": "system-accounts"}
@@ -64,18 +64,18 @@ test_operator {
 	not allow with input as {"role": ["operator"], "action": "edit", "object": "system-configurations"}
 	not allow with input as {"role": ["operator"], "action": "delete", "object": "system-configurations"}
 	# manage all groups
-	not allow with input as {"role": ["operator"], "action": "create", "object": "agent-groups", "group": "group1", "grantedGroups": []}
-	allow with input as {"role": ["operator"], "action": "create", "object": "agent-groups", "group": "group1", "grantedGroups": ["group1", "group2", "group3"]}
-	not allow with input as {"role": ["operator"], "action": "create", "object": "agent-groups", "group": "group1", "grantedGroups": ["group3"]}
-	not allow with input as {"role": ["operator"], "action": "view", "object": "agent-groups", "group": "group1", "grantedGroups": []}
-	allow with input as {"role": ["operator"], "action": "view", "object": "agent-groups", "group": "group1", "grantedGroups": ["group1", "group2", "group3"]}
-	not allow with input as {"role": ["operator"], "action": "view", "object": "agent-groups", "group": "group1", "grantedGroups": ["group3"]}
-	not allow with input as {"role": ["operator"], "action": "edit", "object": "agent-groups", "group": "group1", "grantedGroups": []}
-	allow with input as {"role": ["operator"], "action": "edit", "object": "agent-groups", "group": "group1", "grantedGroups": ["group1", "group2", "group3"]}
-	not allow with input as {"role": ["operator"], "action": "edit", "object": "agent-groups", "group": "group1", "grantedGroups": ["group3"]}
-	not allow with input as {"role": ["operator"], "action": "delete", "object": "agent-groups", "group": "group1", "grantedGroups": []}
-	allow with input as {"role": ["operator"], "action": "delete", "object": "agent-groups", "group": "group1", "grantedGroups": ["group1", "group2", "group3"]}
-	not allow with input as {"role": ["operator"], "action": "delete", "object": "agent-groups", "group": "group1", "grantedGroups": ["group3"]}
+	not allow with input as {"role": ["operator"], "action": "create", "object": "agent-groups", "group": "group1", "authzedGroups": []}
+	allow with input as {"role": ["operator"], "action": "create", "object": "agent-groups", "group": "group1", "authzedGroups": ["group1", "group2", "group3"]}
+	not allow with input as {"role": ["operator"], "action": "create", "object": "agent-groups", "group": "group1", "authzedGroups": ["group3"]}
+	not allow with input as {"role": ["operator"], "action": "view", "object": "agent-groups", "group": "group1", "authzedGroups": []}
+	allow with input as {"role": ["operator"], "action": "view", "object": "agent-groups", "group": "group1", "authzedGroups": ["group1", "group2", "group3"]}
+	not allow with input as {"role": ["operator"], "action": "view", "object": "agent-groups", "group": "group1", "authzedGroups": ["group3"]}
+	not allow with input as {"role": ["operator"], "action": "edit", "object": "agent-groups", "group": "group1", "authzedGroups": []}
+	allow with input as {"role": ["operator"], "action": "edit", "object": "agent-groups", "group": "group1", "authzedGroups": ["group1", "group2", "group3"]}
+	not allow with input as {"role": ["operator"], "action": "edit", "object": "agent-groups", "group": "group1", "authzedGroups": ["group3"]}
+	not allow with input as {"role": ["operator"], "action": "delete", "object": "agent-groups", "group": "group1", "authzedGroups": []}
+	allow with input as {"role": ["operator"], "action": "delete", "object": "agent-groups", "group": "group1", "authzedGroups": ["group1", "group2", "group3"]}
+	not allow with input as {"role": ["operator"], "action": "delete", "object": "agent-groups", "group": "group1", "authzedGroups": ["group3"]}
 	# manage all accounts
 	not allow with input as {"role": ["operator"], "action": "create", "object": "system-accounts"}
 	not allow with input as {"role": ["operator"], "action": "view", "object": "system-accounts"}
@@ -95,18 +95,18 @@ test_viewer {
 	not allow with input as {"role": ["viewer"], "action": "edit", "object": "system-configurations"}
 	not allow with input as {"role": ["viewer"], "action": "delete", "object": "system-configurations"}
 	# manage all groups
-	not allow with input as {"role": ["viewer"], "action": "create", "object": "agent-groups", "group": "group1", "grantedGroups": []}
-	not allow with input as {"role": ["viewer"], "action": "create", "object": "agent-groups", "group": "group1", "grantedGroups": ["group1", "group2", "group3"]}
-	not allow with input as {"role": ["viewer"], "action": "create", "object": "agent-groups", "group": "group1", "grantedGroups": ["group3"]}
-	not allow with input as {"role": ["viewer"], "action": "view", "object": "agent-groups", "group": "group1", "grantedGroups": []}
-  allow with input as {"role": ["viewer"], "action": "view", "object": "agent-groups", "group": "group1", "grantedGroups": ["group1", "group2", "group3"]}
-	not allow with input as {"role": ["viewer"], "action": "view", "object": "agent-groups", "group": "group1", "grantedGroups": ["group3"]}
-	not allow with input as {"role": ["viewer"], "action": "edit", "object": "agent-groups", "group": "group1", "grantedGroups": []}
-	not allow with input as {"role": ["viewer"], "action": "edit", "object": "agent-groups", "group": "group1", "grantedGroups": ["group1", "group2", "group3"]}
-	not allow with input as {"role": ["viewer"], "action": "edit", "object": "agent-groups", "group": "group1", "grantedGroups": ["group3"]}
-	not allow with input as {"role": ["viewer"], "action": "delete", "object": "agent-groups", "group": "group1", "grantedGroups": []}
-	not allow with input as {"role": ["viewer"], "action": "delete", "object": "agent-groups", "group": "group1", "grantedGroups": ["group1", "group2", "group3"]}
-	not allow with input as {"role": ["viewer"], "action": "delete", "object": "agent-groups", "group": "group1", "grantedGroups": ["group3"]}
+	not allow with input as {"role": ["viewer"], "action": "create", "object": "agent-groups", "group": "group1", "authzedGroups": []}
+	not allow with input as {"role": ["viewer"], "action": "create", "object": "agent-groups", "group": "group1", "authzedGroups": ["group1", "group2", "group3"]}
+	not allow with input as {"role": ["viewer"], "action": "create", "object": "agent-groups", "group": "group1", "authzedGroups": ["group3"]}
+	not allow with input as {"role": ["viewer"], "action": "view", "object": "agent-groups", "group": "group1", "authzedGroups": []}
+  allow with input as {"role": ["viewer"], "action": "view", "object": "agent-groups", "group": "group1", "authzedGroups": ["group1", "group2", "group3"]}
+	not allow with input as {"role": ["viewer"], "action": "view", "object": "agent-groups", "group": "group1", "authzedGroups": ["group3"]}
+	not allow with input as {"role": ["viewer"], "action": "edit", "object": "agent-groups", "group": "group1", "authzedGroups": []}
+	not allow with input as {"role": ["viewer"], "action": "edit", "object": "agent-groups", "group": "group1", "authzedGroups": ["group1", "group2", "group3"]}
+	not allow with input as {"role": ["viewer"], "action": "edit", "object": "agent-groups", "group": "group1", "authzedGroups": ["group3"]}
+	not allow with input as {"role": ["viewer"], "action": "delete", "object": "agent-groups", "group": "group1", "authzedGroups": []}
+	not allow with input as {"role": ["viewer"], "action": "delete", "object": "agent-groups", "group": "group1", "authzedGroups": ["group1", "group2", "group3"]}
+	not allow with input as {"role": ["viewer"], "action": "delete", "object": "agent-groups", "group": "group1", "authzedGroups": ["group3"]}
 	# manage all accounts
 	not allow with input as {"role": ["viewer"], "action": "create", "object": "system-accounts"}
 	not allow with input as {"role": ["viewer"], "action": "view", "object": "system-accounts"}

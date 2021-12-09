@@ -24,7 +24,7 @@ type input struct {
 	Action        string   `json:"action"`
 	Object        string   `json:"object"`
 	Group         string   `json:"group"`
-	GrantedGroups []string `json:"grantedGroups"`
+	AuthzedGroups []string `json:"authzedGroups"`
 }
 
 func main() {
@@ -32,8 +32,8 @@ func main() {
 		Role:          []string{"viewer"},
 		Action:        "view",
 		Object:        "agent-groups",
-		Group:         "group1",
-		GrantedGroups: []string{"group1", "group2", "group3"},
+		Group:         "group10",
+		AuthzedGroups: []string{"group1", "group2", "group3"},
 	}
 
 	input := map[string]interface{}{
@@ -41,7 +41,7 @@ func main() {
 		"action":        s.Action,
 		"object":        s.Object,
 		"group":         s.Group,
-		"grantedGroups": s.GrantedGroups,
+		"authzedGroups": s.AuthzedGroups,
 	}
 
 	p, err := policy.ReadPolicy(policyPath)
@@ -66,21 +66,24 @@ func eval(ctx context.Context, query rego.PreparedEvalQuery, input map[string]in
 	var result evalResult
 	rs, err := query.Eval(ctx, rego.EvalInput(input))
 
+	// log.Printf("%v\n", rs[0].Bindings["x"])
+
 	if err != nil {
 		log.Fatalf("evaluation error: %v", err)
 	} else if len(rs) == 0 {
 		log.Fatal("undefined result", err)
 	} else {
 		var allow, ok bool
-		var denyReason string
+		denyReason := ""
 		if allow, ok = rs[0].Bindings["x"].(map[string]interface{})["allow"].(bool); !ok {
 			log.Fatalf("unexpected result type: %v", rs[0].Bindings["x"].(map[string]interface{})["allow"])
 		}
-		if denyReason, ok = rs[0].Bindings["x"].(map[string]interface{})["denyReason"].(string); !ok {
-			log.Fatalf("unexpected result type: %v", rs[0].Bindings["x"].(map[string]interface{})["denyReason"])
+		if !allow {
+			if denyReason, ok = rs[0].Bindings["x"].(map[string]interface{})["denyReason"].(string); !ok {
+				log.Fatalf("unexpected result type: %v", rs[0].Bindings["x"].(map[string]interface{})["denyReason"])
+			}
 		}
 		result = evalResult{allow, denyReason}
-		log.Printf("%+v %+v\n", allow, denyReason)
 	}
 
 	return result, nil

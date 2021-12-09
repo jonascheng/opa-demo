@@ -13,6 +13,7 @@ user_roles := {
 }
 
 # role-permissions assignments
+# TODO: how to support customized role-permission assignments?
 role_permissions := {
 	"admin": [
 		# stellarone system configurations
@@ -71,21 +72,13 @@ role_group_permissions := {
 }
 
 # logic that implements RBAC.
-default eval_result = {
-		"allow": false,
-		"denyReason": ""
-	}
-
 default allow = false
 
-eval_result = result {
-	result := {
-		"allow": allow,
-		"denyReason": deny_reason
-	}
+allow {
+	permit
 }
 
-allow {
+permit {
 	is_action_permit_to_object
 	is_group_permit_to_access
 }
@@ -136,6 +129,14 @@ is_group_permit_to_access {
 	p == {"object": "all"}
 } else { # check group access
 	# for each granted groups
-	g = input.grantedGroups[_]
+	g = input.authzedGroups[_]
 	g == input.group
+}
+
+eval_result["allow"] = result {
+	result := allow
+}
+
+eval_result["denyReason"] = result {
+	result := deny_reason
 }
